@@ -72,3 +72,805 @@ result = gpd.sjoin(cities, roads, how="left", predi
 cate="within") 🡨 Spatial Join
 result
 result.plot()
+
+practical 2
+!pip install geopandas shapely matplotlib pyproj
+
+import geopandas as gpd
+from shapely.geometry import Point
+import matplotlib.pyplot as plt
+
+
+data = {
+    'city': ['A', 'B', 'C'],
+    'latitude': [40.7128, 34.0522, 41.8781],
+    'longitude': [-74.0060, -118.2437, -87.6298]
+}
+
+# Create GeoDataFrame
+gdf = gpd.GeoDataFrame(
+    data,
+    geometry=gpd.points_from_xy(data['longitude'], data['latitude']),
+    crs="EPSG:4326"   # WGS84
+)
+
+gdf
+
+gdf.plot(figsize=(6,4), color='red')
+plt.title("Cities in WGS84 (EPSG:4326)")
+plt.show()
+
+gdf_3857 = gdf.to_crs(epsg=3857)
+gdf_3857
+
+gdf_3857.plot(figsize=(6,4), color='blue')
+plt.title("Cities in Web Mercator (EPSG:3857)")
+plt.show()
+
+from shapely.geometry import Polygon
+
+# Self-intersecting polygon (bow-tie)
+invalid_poly = Polygon([(0,0), (2,2), (0,2), (2,0)])
+
+gdf_invalid = gpd.GeoDataFrame(
+    {"name": ["invalid_polygon"]},
+    geometry=[invalid_poly],
+    crs="EPSG:4326"
+)
+
+gdf_invalid
+
+gdf_invalid.geometry.is_valid
+gdf_invalid.plot(color='red')
+plt.title("Invalid Polygon")
+plt.show()
+gdf_fixed = gdf_invalid.copy()
+gdf_fixed['geometry'] = gdf_fixed.geometry.buffer(0)
+
+gdf_fixed.geometry.is_valid
+gdf_fixed.plot(color='green')
+plt.title("Fixed Polygon (buffer(0))")
+plt.show()
+try:
+    gdf_fixed2 = gdf_invalid.copy()
+    gdf_fixed2['geometry'] = gdf_fixed2.make_valid()
+    print("Fixed using make_valid()")
+except Exception as e:
+    print("make_valid() not available:", e)
+gdf_fixed.to_file("cleaned_geometry.geojson", driver="GeoJSON")
+
+Practical 3
+!pip install rasterio numpy matplotlib
+import numpy as np
+import rasterio
+from rasterio.transform import from_origin
+
+# Create fake raster (100 x 100)
+data = np.random.randint(0, 255, (100, 100)).astype('uint8')
+
+transform = from_origin(0, 100, 1, 1)  # (x_left, y_top, pixel_width, pixel_height)
+
+with rasterio.open(
+    "sample.tif",
+    "w",
+    driver="GTiff",
+    height=data.shape[0],
+    width=data.shape[1],
+    count=1,
+    dtype=data.dtype,
+    crs="EPSG:4326",
+    transform=transform,
+) as dst:
+    dst.write(data, 1)
+
+print("sample.tif created successfully!")
+
+# Read a Raster File
+import rasterio
+import matplotlib.pyplot as plt
+
+# Path to raster file (GeoTIFF)
+raster_path = "sample.tif"
+
+# Read raster
+with rasterio.open(raster_path) as src:
+    raster = src.read(1)      # Read first band
+    profile = src.profile     # Metadata
+
+print("Raster Metadata:")
+print(profile)
+
+plt.imshow(raster, cmap="terrain")
+plt.colorbar()
+plt.title("Raster Visualization")
+plt.show()
+
+# Write (Save) a New Raster
+import numpy as np
+import rasterio
+
+normalized = (raster - raster.min()) / (raster.max() - raster.min())
+
+out_file = "normalized_output.tif"
+
+with rasterio.open(
+    out_file,
+    'w',
+    driver='GTiff',
+    height=normalized.shape[0],
+    width=normalized.shape[1],
+    count=1,
+    dtype='float32',
+    crs=profile['crs'],
+    transform=profile['transform']
+) as dst:
+    dst.write(normalized.astype('float32'), 1)
+
+print("New raster saved:", out_file)
+
+# Create dummy RED and NIR rasters for NDVI
+
+red_data = np.random.randint(1, 255, (100, 100)).astype('uint8')
+nir_data = np.random.randint(1, 255, (100, 100)).astype('uint8')
+
+with rasterio.open(
+    "red.tif",
+    "w",
+    driver="GTiff",
+    height=red_data.shape[0],
+    width=red_data.shape[1],
+    count=1,
+    dtype=red_data.dtype,
+    crs="EPSG:4326",
+    transform=transform,
+) as dst:
+    dst.write(red_data, 1)
+
+with rasterio.open(
+    "nir.tif",
+    "w",
+    driver="GTiff",
+    height=nir_data.shape[0],
+    width=nir_data.shape[1],
+    count=1,
+    dtype=nir_data.dtype,
+    crs="EPSG:4326",
+    transform=transform,
+) as dst:
+    dst.write(nir_data, 1)
+
+print("red.tif and nir.tif created!")
+
+# Raster Analysis
+import rasterio
+import numpy as np
+import matplotlib.pyplot as plt
+
+with rasterio.open("red.tif") as red, rasterio.open("nir.tif") as nir:
+    R = red.read(1).astype('float32')
+    N = nir.read(1).astype('float32')
+
+NDVI = (N - R) / (N + R)
+
+plt.imshow(NDVI, cmap='RdYlGn')
+plt.colorbar()
+plt.title("NDVI Map")
+plt.show()
+
+!pip install geopy
+
+from geopy.geocoders import Nominatim
+
+geolocator = Nominatim(user_agent="geo_app")
+
+location = geolocator.geocode("Eiffel Tower, Paris")
+
+print("Address:", location.address)
+print("Latitude:", location.latitude)
+print("Longitude:", location.longitude)
+
+location = geolocator.reverse("48.8584, 2.2945")
+
+print("Reverse Geocoded Address:")
+print(location.address)
+
+addresses = ["New York, USA", "Nairobi, Kenya", "Tokyo, Japan"]
+
+for addr in addresses:
+    loc = geolocator.geocode(addr)
+    print(addr, "-->", (loc.latitude, loc.longitude))
+
+practical 4
+
+!pip install geopandas shapely matplotlib plotly
+import geopandas as gpd
+from shapely.geometry import Polygon
+
+data = {
+    "area": [300,600,800,450],
+    "landuse": ["Residential", "Commercial", "Residential", "Industrial"],
+    "geometry": [
+        Polygon([(0,0),(1,0),(1,1),(0,1)]),
+        Polygon([(2,0),(3,0),(3,1),(2,1)]),
+        Polygon([(4,0),(5,0),(5,1),(4,1)]),
+        Polygon([(6,0),(7,0),(7,1),(6,1)])
+    ]
+}
+
+gdf = gpd.GeoDataFrame(data,crs = "EPSG:4326")
+# Select parcels with area > 500 sq meters
+filtered = gdf[gdf["area"] > 500]
+
+print(filtered.head())
+# --- Filter by category ---
+# Select only residential parcels
+residential = gdf[gdf["landuse"] == "Residential"]
+
+# Save result
+residential.to_file("residential_parcels.shp")
+print("Residential parcels saved")
+
+import geopandas as gpd
+from shapely.geometry import Point, Polygon
+
+city_geom = Polygon([(0,0),(5,0),(5,5),(0,5)])
+city = gpd.GeoDataFrame({
+    "name": ["City"]},
+    geometry = [city_geom],
+    crs = "EPSG:4326"
+)
+
+bus_stops = gpd.GeoDataFrame({
+    "stop": ["A","B","C"]},
+    geometry = [Point(1,1),Point(3,3),Point(6,6)],
+    crs = "EPSG:4326"
+)
+
+bus_in_city = gpd.sjoin(bus_stops, city, predicate="within")
+
+# Save result
+bus_in_city.to_file("bus_stops_in_city.shp")
+print(bus_in_city)
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+x = np.linspace(-5, 5, 100)
+y = np.linspace(-5, 5, 100)
+X, Y = np.meshgrid(x, y)
+
+Z = np.sin(np.sqrt(X**2 + Y**2))
+
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+
+ax.plot_surface(X, Y, Z, cmap='terrain')
+
+ax.set_xlabel("X")
+ax.set_ylabel("Y")
+ax.set_zlabel("Z")
+
+plt.show()
+import plotly.graph_objects as go
+
+z_exaggeration = 3
+
+fig = go.Figure(
+    data=[go.Surface(
+        x=X,
+        y=Y,
+        z=Z * z_exaggeration,
+        colorscale='earth'
+    )]
+)
+
+fig.update_layout(title="DEM with Vertical Exaggeration")
+fig.show()
+
+practical 5
+
+
+!pip install folium
+import folium
+
+m = folium.Map(
+location=[20.5937, 78.9629], # India coordinates
+zoom_start=5
+)
+m
+
+
+folium.Map(
+location=[20.5937, 78.9629],
+zoom_start=5,
+tiles="OpenStreetMap"
+)
+
+
+m = folium.Map(location=[28.6139, 77.2090], zoom_start=6)
+folium.Marker(
+location=[28.6139, 77.2090],
+popup="New Delhi",
+tooltip="Click for info"
+).add_to(m)
+
+m
+
+
+cities = [
+("Mumbai", 19.0760, 72.8777),
+("Chennai", 13.0827, 80.2707),
+("Kolkata", 22.5726, 88.3639)
+]
+m = folium.Map(location=[20.5937, 78.9629], zoom_start=5)
+for city, lat, lon in cities:
+    folium.Marker(
+    [lat, lon],
+    popup=city
+    ).add_to(m)
+m
+
+
+folium.Marker(
+location=[19.0760, 72.8777],
+popup="Mumbai",
+icon=folium.Icon(color="green", icon="info-sign")
+).add_to(m)
+m
+
+
+
+folium.CircleMarker(
+location=[28.6139, 77.2090],
+radius=10,
+popup="Delhi",
+color="red",
+fill=True,
+fill_color="red"
+).add_to(m)
+m
+
+
+
+folium.PolyLine(
+locations=[
+[28.6139, 77.2090],
+[19.0760, 72.8777],
+[13.0827, 80.2707]
+],
+color="blue"
+).add_to(m)
+m
+m.save("india_map.html")
+
+
+
+
+
+
+!pip install shapely matplotlib
+from shapely.geometry import Point, LineString, Polygon
+import matplotlib.pyplot as plt
+
+# Create a point
+
+point = Point(2, 3)
+point
+
+
+# Create buffer of radius 1 unit
+point_buffer = point.buffer(1)
+point_buffer
+
+
+x, y = point.xy
+bx, by = point_buffer.exterior.xy
+plt.figure(figsize=(5,5))
+plt.plot(x, y, 'ro', label='Point')
+plt.plot(bx, by, 'b', label='Buffer')
+plt.fill(bx, by, alpha=0.3)
+plt.legend()
+plt.title("Buffer Analysis on Point")
+plt.show()
+
+
+# Create a line
+line = LineString([(1, 1), (4, 4)])
+
+# Create buffer around line
+
+line_buffer = line.buffer(0.5)
+line_buffer
+
+
+lx, ly = line.xy
+bx, by = line_buffer.exterior.xy
+plt.figure(figsize=(5,5))
+plt.plot(lx, ly, 'r', label='Line')
+plt.plot(bx, by, 'b', label='Buffer')
+plt.fill(bx, by, alpha=0.3)
+plt.legend()
+plt.title("Buffer Analysis on Line")
+plt.show()
+
+
+# Create a polygon
+polygon = Polygon([(1,1), (4,1), (4,4), (1,4)])
+# Create buffer
+polygon_buffer = polygon.buffer(0.5)
+polygon_buffer
+
+
+px, py = polygon.exterior.xy
+bx, by = polygon_buffer.exterior.xy
+plt.figure(figsize=(5,5))
+plt.plot(px, py, 'r', label='Polygon')
+
+plt.plot(bx, by, 'b', label='Buffer')
+plt.fill(bx, by, alpha=0.3)
+plt.legend()
+plt.title("Buffer Analysis on Polygon")
+plt.show()
+
+
+inner_buffer = polygon.buffer(-0.3)
+inner_buffer
+
+practical 6
+
+!pip install geopandas shapely matplotlib seaborn folium
+import geopandas as gpd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from shapely.geometry import Point, Polygon
+import random
+import folium
+from folium.plugins import HeatMap
+
+
+points = []
+for i in range(100):
+    x = random.uniform(0, 10)
+    y = random.uniform(0, 10)
+    points.append(Point(x, y))
+
+points_gdf = gpd.GeoDataFrame(geometry=points, crs="EPSG:4326")
+points_gdf.head()
+
+boundary = Polygon([
+(2, 2),
+(8, 2),
+(8, 8),
+(2, 8)
+])
+boundary_gdf = gpd.GeoDataFrame(geometry=[boundary], crs="EPSG:4326")
+
+clipped_points = gpd.clip(points_gdf, boundary_gdf) 
+clipped_points.head()
+
+
+fig, ax = plt.subplots(figsize=(6, 6)) 
+points_gdf.plot(ax=ax, color="blue", markersize=8, label="Original Points")
+boundary_gdf.plot(ax=ax, facecolor="none", edgecolor="black", linewidth=2)
+clipped_points.plot(ax=ax, color="red", markersize=8, label="Clipped Points")
+plt.legend()
+plt.title("Clipping Geospatial Data")
+plt.show()
+
+
+
+points_gdf["x"] = points_gdf.geometry.x
+points_gdf["y"] = points_gdf.geometry.y
+plt.figure(figsize=(6, 5))
+sns.kdeplot(
+x=points_gdf["x"],
+y=points_gdf["y"],
+cmap="Reds",
+fill=True
+)
+plt.title("Heatmap of Point Density")
+plt.xlabel("X")
+plt.ylabel("Y")
+plt.show()
+
+heat_data = [[point.y, point.x] for point in points_gdf.geometry]
+m = folium.Map(location=[5, 5], zoom_start=5)
+HeatMap(heat_data).add_to(m)
+m
+
+practical 7
+
+!pip install osmnx geopandas networkx matplotlib
+
+
+import osmnx as ox
+import networkx as nx
+import matplotlib.pyplot as plt
+
+ox.settings.use_cache = True
+ox.settings.log_console = True
+
+place_name = "Nairobi, Kenya"
+
+G = ox.graph_from_place(place_name, network_type="drive")
+
+ox.plot_graph(G)
+
+
+
+origin_point = (-1.2921, 36.8219) 
+destination_point = (-1.3192, 36.9275) 
+
+orig_node = ox.nearest_nodes(G, origin_point[1], origin_point[0])
+dest_node = ox.nearest_nodes(G, destination_point[1], destination_point[0])
+orig_node, dest_node
+
+
+
+
+route = nx.shortest_path(G, orig_node, dest_node, weight="length")
+
+fig, ax = ox.plot_graph_route(
+G, route,
+route_color="red",
+route_linewidth=4,
+node_size=0
+)
+
+
+route_gdf = ox.routing.route_to_gdf(G, route)
+
+
+route_length = route_gdf["length"].sum()
+print(f"Route length: {route_length/1000:.2f} km")
+
+
+
+import geopandas as gpd
+from shapely.geometry import Point, Polygon
+
+polygons = gpd.GeoDataFrame({
+"area_name": ["Zone A", "Zone B"],
+"geometry": [
+Polygon([(0,0), (0,5), (5,5), (5,0)]),
+Polygon([(5,0), (5,5), (10,5), (10,0)])
+]
+}, crs="EPSG:4326")
+
+points = gpd.GeoDataFrame({
+"facility": ["School 1", "School 2", "Hospital"],
+"geometry": [
+Point(1, 1),
+Point(6, 2),
+Point(8, 4)
+]
+}, crs="EPSG:4326")
+
+ax = polygons.plot(color="lightgrey", edgecolor="black", figsize=(6,6))
+points.plot(ax=ax, color="red")
+
+
+
+joined = gpd.sjoin(
+points,
+polygons,
+how="left",
+predicate="within"
+)
+joined
+
+facility_count = joined.groupby("area_name").size().reset_index(name="count")
+facility_count
+
+practical 8
+
+!pip install rasterio geopandas rasterstats shapely
+import numpy as np
+import geopandas as gpd
+import rasterio
+from rasterio.transform import from_origin
+from rasterstats import zonal_stats
+from shapely.geometry import box
+import matplotlib.pyplot as plt
+
+# Create a raster (100 x 100 grid)
+raster_data = np.random.uniform(10, 100, (100, 100))
+# Define raster transform
+transform = from_origin(0, 100, 1, 1)
+# Save raster to disk
+raster_path = "synthetic_raster.tif"
+
+with rasterio.open(
+raster_path,
+"w",
+driver="GTiff",
+height=raster_data.shape[0],
+width=raster_data.shape[1],
+count=1,
+dtype=raster_data.dtype,
+crs="EPSG:4326",
+transform=transform,
+) as dst:
+    dst.write(raster_data, 1)
+
+polygons = []
+zone_ids = []
+for i in range(5):
+    for j in range(5):
+        polygons.append(box(i*20, j*20, (i+1)*20, (j+1)*20))
+        zone_ids.append(f"Zone_{i}_{j}")
+        
+zones = gpd.GeoDataFrame(
+    {"zone": zone_ids, "geometry": polygons},
+    crs="EPSG:4326"
+
+)
+zones
+
+stats = zonal_stats(
+zones,
+raster_path,
+stats=["mean", "min", "max", "std"]
+)
+zones_stats = zones.join(gpd.GeoDataFrame(stats))
+zones_stats
+
+zones_stats.plot(
+column="mean",
+cmap="YlOrRd",
+legend=True,
+edgecolor="black"
+)
+
+plt.title("Zonal Mean of Synthetic Raster")
+plt.show()
+
+
+
+
+
+np.random.seed(42)
+num_points = 30
+x = np.random.uniform(0, 100, num_points)
+y = np.random.uniform(0, 100, num_points)
+values = np.random.uniform(20, 80, num_points)
+points = gpd.GeoDataFrame(
+{"value": values},
+geometry=gpd.points_from_xy(x, y),
+crs="EPSG:4326"
+)
+points
+
+
+from scipy.spatial import cKDTree
+
+def idw(x, y, values, xi, yi, power=2):
+    tree = cKDTree(list(zip(x, y)))
+    dist, idx = tree.query(list(zip(xi.ravel(), yi.ravel())), k=6)
+    weights = 1 / dist**power
+    weights[np.isinf(weights)] = 0
+    zi = np.sum(weights * values[idx], axis=1) / np.sum(weights, axis=1)
+    return zi.reshape(xi.shape)
+
+
+grid_x, grid_y = np.mgrid[0:100:100j, 0:100:100j]
+
+idw_result = idw(x, y, values, grid_x, grid_y)
+
+plt.figure(figsize=(7, 6))
+plt.imshow(
+idw_result.T,
+origin="lower",
+extent=(0, 100, 0, 100),
+cmap="viridis"
+)
+plt.scatter(x, y, c="red", edgecolor="black")
+plt.colorbar(label="Interpolated Value")
+plt.title("IDW Interpolation (Synthetic Data)")
+plt.show()
+
+!pip install pykrige
+from pykrige.ok import OrdinaryKriging
+
+OK = OrdinaryKriging(
+x,
+y,
+values,
+variogram_model="spherical",
+verbose=False,
+
+enable_plotting=False
+)
+z_kriged, ss = OK.execute("grid", grid_x[:,0], grid_y[0,:])
+
+
+plt.figure(figsize=(7, 6))
+plt.imshow(
+z_kriged.T,
+origin="lower",
+extent=(0, 100, 0, 100),
+cmap="plasma"
+)
+plt.scatter(x, y, c="black")
+plt.colorbar(label="Interpolated Value")
+plt.title("Ordinary Kriging (Synthetic Data)")
+plt.show()
+
+practical 9
+
+
+!pip install geopandas shapely
+import pandas as pd
+import geopandas as gpd
+from shapely.geometry import Polygon
+
+
+landuse_polygons = [
+Polygon([(0,0), (4,0), (4,4), (0,4)]), # Residential
+Polygon([(4,0), (8,0), (8,4), (4,4)]), # Commercial
+Polygon([(0,4), (8,4), (8,8), (0,8)]) # Industrial
+]
+landuse_types = ["Residential", "Commercial", "Industrial"]
+landuse = gpd.GeoDataFrame(
+{"landuse": landuse_types},
+geometry=landuse_polygons,
+crs="EPSG:4326"
+)
+
+
+floodzone_polygons = [
+Polygon([(2,2), (6,2), (6,6), (2,6)])
+]
+floodzone = gpd.GeoDataFrame(
+{"flood_risk": ["High"]},
+geometry=floodzone_polygons,
+crs="EPSG:4326"
+)
+
+
+ax = landuse.plot(color="lightgreen", edgecolor="black", figsize=(6,6))
+floodzone.plot(ax=ax, color="blue", alpha=0.5)
+
+
+
+flooded_landuse = gpd.overlay(landuse, floodzone, how="intersection")
+flooded_landuse
+
+
+ax = landuse.plot(color="lightgrey", edgecolor="black", figsize=(6,6))
+floodzone.plot(ax=ax, color="blue", alpha=0.4)
+flooded_landuse.plot(ax=ax, color="red")
+
+flooded_landuse_m = flooded_landuse.to_crs(epsg=3857)
+flooded_landuse_m["area_sqm"] = flooded_landuse_m.geometry.area
+flooded_landuse_m[["landuse", "area_sqm"]]
+
+floodzones = {
+"zone1": Polygon([(1,1), (3,1), (3,3), (1,3)]),
+"zone2": Polygon([(5,1), (7,1), (7,3), (5,3)]),
+"zone3": Polygon([(2,5), (6,5), (6,7), (2,7)])
+}
+
+results = []
+for name, polygon in floodzones.items():
+    fz = gpd.GeoDataFrame(
+    {"zone": [name]},
+    geometry=[polygon],
+    crs="EPSG:4326"
+    )
+    overlay_result = gpd.overlay(landuse, fz, how="intersection")
+    overlay_result["zone"] = name
+    results.append(overlay_result)
+
+
+
+batch_overlay = gpd.GeoDataFrame(
+pd.concat(results, ignore_index=True),
+crs="EPSG:4326"
+)
+
+
+
+batch_overlay_m = batch_overlay.to_crs(epsg=3857)
+batch_overlay_m["area_sqm"] = batch_overlay_m.geometry.area
+batch_overlay_m.groupby(["zone", "landuse"])["area_sqm"].sum()
