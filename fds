@@ -1,876 +1,469 @@
-P1A. Reading and Writing Spatial Data.
-pip install geopandas shapely fiona pyproj
-import geopandas as gpd
-import os
-os.getcwd()
-os.listdir()
-gdf = gpd.read_file("110m_cultural/ne_110m_admin_0_tiny_countries.shp")
-import geopandas as gpd
-from shapely.geometry import Point, LineString, Polygon
-import matplotlib.pyplot as plt
-world = gpd.read_file(gpd.datasets.get_path("110m_cultural/ne_110m_admin_0_tiny_countries"))
-world.head()
-gdf
-gdf.crs
-gdf.to_file("countries.shp")
-A=gpd.read_file("co
-untries.shp")
-A
+Dataset used: titanic.csv
 
-P1B. Working with Spatial data, GeoPandasDataFrames and Geometry Types.
-from shapely.geometry import Point, LineString, Polygon
-p = Point(2, 3)
-p
-l = LineString([(0,0), (2,2), (4,0)])
-l
-poly = Polygon([(0,0), (4,0), (4,3), (0,3)])
-poly
-import geopandas as gpd
-gdf = gpd.GeoDataFrame({
-    "name": ["Point A", "Line A", "Polygon A"],
-    "geometry": [p, l, poly]
-}, crs="EPSG:4326")
-gdf.plot()
-
-cities.geojson
-from shapely.geometry import Point
-import geopandas as gpd
+practical 1
 import pandas as pd
-cities_data = {
-    "city": ["Paris", "Berlin", "Madrid", "Rome", "London", "Lisbon"],
-    "population": [2148000, 3769000, 3265000, 2873000, 8982000, 504700],
-    "geometry": [
-        Point(2.3522, 48.8566),
-        Point(13.4050, 52.5200),
-        Point(-3.7038, 40.4168),
-        Point(12.4964, 41.9028),
-        Point(-0.1276, 51.5074),
-        Point(-9.1393, 38.7223)
-    ]
-}
-cities = gpd.GeoDataFrame(cities_data, crs="EPSG:4326")
-cities.to_file("cities.geojson", driver="GeoJSON")
-print("cities.geojson created!")
+df = pd.read_csv("titanic.csv")
+df.shape
+(1309, 14)
+df.head()
+df.info()
+df.nunique()
+df.dtypes
+df.applymap(type).nunique() 
+df.select_dtypes(include="object").head()
+df.isnull().sum() #Check total missing values
+df.isnull().mean() * 100 #Check percent missing
+df.isnull().mean().sort_values(ascending=False) #Sorted list of columns with missing values
+df.duplicated().sum() #count duplicates
+df[df.duplicated()] #view duplicates
+df["ticket"].duplicated().sum() #Detect duplicate values in a specific column
+df["Name"].str.contains("[^a-zA-Z0-9 ,.'-]").sum() #Check for presence of special characters
+df["embarked"].unique() #Unique values
+df["embarked"].str.lower().unique() #Lowercase check for case inconsistencies
+df["embarked"].value_counts(normalize=True) #Finding rare values of categorical variables
 
-roads.geojson
-from shapely.geometry import LineString
-import geopandas as gpd
-roads = gpd.GeoDataFrame({
-    "name": ["Road A", "Road B", "Road C"],
-    "geometry": [
-        LineString([(2, 48), (3, 49)]),
-        LineString([(13, 52), (14, 52.5)]),
-        LineString([(-3, 40), (-3.5, 41)])
-    ]
-}, crs="EPSG:4326")
-roads.to_file("roads.geojson", driver="GeoJSON")
-print("roads.geojson created!")
-
-cities = gpd.read_file("cities.geojson")
-countries = gpd.read_file("roads.geojson")
-result = gpd.sjoin(cities, roads, how="left", predi
-cate="within") 🡨 Spatial Join
-result
-result.plot()
 
 practical 2
-!pip install geopandas shapely matplotlib pyproj
 
-import geopandas as gpd
-from shapely.geometry import Point
-import matplotlib.pyplot as plt
+!pip install pandas numpy faker scipy
+import pandas as pd
+import numpy as np
+from faker import Faker
+from scipy import stats
 
+fake = Faker()
+sales_data = []
+products = ["Laptop", "Phone", "Tablet", "Headphones", "Smartwatch"]
+regions = ["North", "South", "East", "West"]
 
-data = {
-    'city': ['A', 'B', 'C'],
-    'latitude': [40.7128, 34.0522, 41.8781],
-    'longitude': [-74.0060, -118.2437, -87.6298]
+for i in range(200):  # 200 rows
+    quantity = np.random.randint(1, 10)
+    price = np.random.randint(50, 1500)  # realistic electronics prices
+    
+    sales_data.append({
+        "Sales_ID": i + 1,
+        "Customer_Name": fake.name(),
+        "Product": np.random.choice(products),
+        "Quantity": quantity,
+        "Price": price,
+        "Total_Amount": quantity * price,
+        "Purchase_Date": fake.date_this_year(),
+        "Region": np.random.choice(regions)
+    })
+df = pd.DataFrame(sales_data)
+df.head()
+df.loc[5, "Customer_Name"] = None
+df.loc[20, "Price"] = np.nan
+df.loc[50, "Region"] = None
+df.loc[70, "Quantity"] = np.nan
+df.loc[10, "Total_Amount"] = 50000   # extreme high sale
+df.loc[15, "Quantity"] = 40          # unrealistic quantity
+df.loc[33, "Price"] = 5000 
+df = pd.concat([df, df.iloc[[0]]], ignore_index=True)
+df = pd.concat([df, df.iloc[[10]]], ignore_index=True)
+df.isnull().sum()
+df.isnull().sum().sum()
+df[df.isnull().any(axis=1)]
+df_dropna = df.dropna()
+df["Price"] = df["Price"].fillna(df["Price"].median())
+df["Quantity"] = df["Quantity"].fillna(df["Quantity"].median())
+df["Customer_Name"] = df["Customer_Name"].fillna(df["Customer_Name"].mode()[0])
+df["Region"] = df["Region"].fillna(df["Region"].mode()[0])
+df[df.isnull().any(axis=1)]
+numeric_cols = ["Quantity", "Price", "Total_Amount"]
+
+z_scores = np.abs(stats.zscore(df[numeric_cols]))
+
+outliers_z = df[(z_scores > 3).any(axis=1)] #checks if any value in the row has a Z-score greater than 3
+outliers_z
+Q1 = df["Total_Amount"].quantile(0.25)
+Q3 = df["Total_Amount"].quantile(0.75)
+IQR = Q3 - Q1
+
+lower = Q1 - 1.5 * IQR
+upper = Q3 + 1.5 * IQR
+
+outliers_iqr = df[(df["Total_Amount"] < lower) | (df["Total_Amount"] > upper)]
+outliers_iqr
+df_no_outliers = df[
+    (df["Total_Amount"] >= lower) &
+    (df["Total_Amount"] <= upper)
+]
+df["Total_Amount_Capped"] = np.where(
+    df["Total_Amount"] > upper, upper,
+    np.where(df["Total_Amount"] < lower, lower, df["Total_Amount"])
+)
+df["Total_Amount_Log"] = np.log(df["Total_Amount"])
+df.head()
+#Count duplicates
+df.duplicated().sum()
+df[df.duplicated(keep=False)]
+df_no_duplicates = df.drop_duplicates()
+df_no_duplicates[df_no_duplicates.duplicated(keep=False)]
+df_no_duplicates.info()
+df_no_duplicates.describe()
+
+practical 3
+!pip install faker
+import pandas as pd
+import numpy as np
+
+from faker import Faker
+
+from sklearn.preprocessing import MinMaxScaler, StandardScaler, LabelEncoder
+from sklearn.feature_selection import SelectKBest, f_regression
+from sklearn.decomposition import PCA
+import pandas as pd
+import numpy as np
+from faker import Faker
+
+fake = Faker()
+np.random.seed(42)
+
+records = []
+
+for _ in range(1000):
+    age = np.random.randint(18, 70)
+    income = np.random.randint(25000, 150000)
+    monthly_spend = np.random.randint(100, 5000)
+    tenure = np.random.randint(1, 120)
+    credit_score = np.random.randint(300, 850)
+
+    membership = np.random.choice(
+        ['Basic', 'Silver', 'Gold', 'Platinum'],
+        p=[0.4, 0.3, 0.2, 0.1]
+    )
+
+    churn = np.random.choice([0, 1], p=[0.75, 0.25])
+
+    records.append({
+        'age': age,
+        'annual_income': income,
+        'monthly_spend': monthly_spend,
+        'tenure_months': tenure,
+        'credit_score': credit_score,
+        'gender': fake.random_element(['Male', 'Female']),
+        'membership_level': membership,
+        'region': fake.state(),
+        'churn': churn
+    })
+
+df = pd.DataFrame(records)
+df.head()
+from sklearn.preprocessing import MinMaxScaler
+
+minmax_features = ['annual_income', 'monthly_spend']
+
+minmax_scaler = MinMaxScaler()
+df[[f + '_norm' for f in minmax_features]] = minmax_scaler.fit_transform(
+    df[minmax_features]
+)
+
+df[minmax_features + [f + '_norm' for f in minmax_features]].head()
+from sklearn.preprocessing import StandardScaler
+
+std_features = ['age', 'tenure_months', 'credit_score']
+
+std_scaler = StandardScaler()
+df[[f + '_std' for f in std_features]] = std_scaler.fit_transform(
+    df[std_features]
+)
+
+df[std_features + [f + '_std' for f in std_features]].head()
+#Feature Extraction
+# Customer value metric
+df['spend_to_income_ratio'] = df['monthly_spend'] * 12 / df['annual_income']
+
+# Loyalty metric
+df['loyalty_score'] = df['tenure_months'] * df['monthly_spend']
+
+df[['spend_to_income_ratio', 'loyalty_score']].head()
+#Feature Selection 
+#SelectKBest:selects the top k features based on a scoring function
+#f_classif: ANOVA F-test for classification problems
+from sklearn.feature_selection import SelectKBest, f_classif 
+
+X = df[['age', 'tenure_months', 'credit_score', 'monthly_spend']]
+y = df['churn']
+
+selector = SelectKBest(score_func=f_classif, k=2)
+selector.fit(X, y)
+
+selected_features = X.columns[selector.get_support()]
+selected_features
+#Ordinal Encoding (As Membership Level has clear hierarchy)
+membership_map = {
+    'Basic': 0,
+    'Silver': 1,
+    'Gold': 2,
+    'Platinum': 3
 }
 
-# Create GeoDataFrame
-gdf = gpd.GeoDataFrame(
-    data,
-    geometry=gpd.points_from_xy(data['longitude'], data['latitude']),
-    crs="EPSG:4326"   # WGS84
-)
+df['membership_encoded'] = df['membership_level'].map(membership_map)
 
-gdf
+df[['membership_level', 'membership_encoded']].head()
+df.head()
+df = pd.get_dummies(df, columns=['gender'], drop_first=True)
+df.head()
+df['gender_Male'] = df['gender_Male'].astype(int)
+df.head()
+region_freq = df['region'].value_counts(normalize=True)
+df['region_freq'] = df['region'].map(region_freq)
 
-gdf.plot(figsize=(6,4), color='red')
-plt.title("Cities in WGS84 (EPSG:4326)")
-plt.show()
-
-gdf_3857 = gdf.to_crs(epsg=3857)
-gdf_3857
-
-gdf_3857.plot(figsize=(6,4), color='blue')
-plt.title("Cities in Web Mercator (EPSG:3857)")
-plt.show()
-
-from shapely.geometry import Polygon
-
-# Self-intersecting polygon (bow-tie)
-invalid_poly = Polygon([(0,0), (2,2), (0,2), (2,0)])
-
-gdf_invalid = gpd.GeoDataFrame(
-    {"name": ["invalid_polygon"]},
-    geometry=[invalid_poly],
-    crs="EPSG:4326"
-)
-
-gdf_invalid
-
-gdf_invalid.geometry.is_valid
-gdf_invalid.plot(color='red')
-plt.title("Invalid Polygon")
-plt.show()
-gdf_fixed = gdf_invalid.copy()
-gdf_fixed['geometry'] = gdf_fixed.geometry.buffer(0)
-
-gdf_fixed.geometry.is_valid
-gdf_fixed.plot(color='green')
-plt.title("Fixed Polygon (buffer(0))")
-plt.show()
-try:
-    gdf_fixed2 = gdf_invalid.copy()
-    gdf_fixed2['geometry'] = gdf_fixed2.make_valid()
-    print("Fixed using make_valid()")
-except Exception as e:
-    print("make_valid() not available:", e)
-gdf_fixed.to_file("cleaned_geometry.geojson", driver="GeoJSON")
-
-Practical 3
-!pip install rasterio numpy matplotlib
-import numpy as np
-import rasterio
-from rasterio.transform import from_origin
-
-# Create fake raster (100 x 100)
-data = np.random.randint(0, 255, (100, 100)).astype('uint8')
-
-transform = from_origin(0, 100, 1, 1)  # (x_left, y_top, pixel_width, pixel_height)
-
-with rasterio.open(
-    "sample.tif",
-    "w",
-    driver="GTiff",
-    height=data.shape[0],
-    width=data.shape[1],
-    count=1,
-    dtype=data.dtype,
-    crs="EPSG:4326",
-    transform=transform,
-) as dst:
-    dst.write(data, 1)
-
-print("sample.tif created successfully!")
-
-# Read a Raster File
-import rasterio
-import matplotlib.pyplot as plt
-
-# Path to raster file (GeoTIFF)
-raster_path = "sample.tif"
-
-# Read raster
-with rasterio.open(raster_path) as src:
-    raster = src.read(1)      # Read first band
-    profile = src.profile     # Metadata
-
-print("Raster Metadata:")
-print(profile)
-
-plt.imshow(raster, cmap="terrain")
-plt.colorbar()
-plt.title("Raster Visualization")
-plt.show()
-
-# Write (Save) a New Raster
-import numpy as np
-import rasterio
-
-normalized = (raster - raster.min()) / (raster.max() - raster.min())
-
-out_file = "normalized_output.tif"
-
-with rasterio.open(
-    out_file,
-    'w',
-    driver='GTiff',
-    height=normalized.shape[0],
-    width=normalized.shape[1],
-    count=1,
-    dtype='float32',
-    crs=profile['crs'],
-    transform=profile['transform']
-) as dst:
-    dst.write(normalized.astype('float32'), 1)
-
-print("New raster saved:", out_file)
-
-# Create dummy RED and NIR rasters for NDVI
-
-red_data = np.random.randint(1, 255, (100, 100)).astype('uint8')
-nir_data = np.random.randint(1, 255, (100, 100)).astype('uint8')
-
-with rasterio.open(
-    "red.tif",
-    "w",
-    driver="GTiff",
-    height=red_data.shape[0],
-    width=red_data.shape[1],
-    count=1,
-    dtype=red_data.dtype,
-    crs="EPSG:4326",
-    transform=transform,
-) as dst:
-    dst.write(red_data, 1)
-
-with rasterio.open(
-    "nir.tif",
-    "w",
-    driver="GTiff",
-    height=nir_data.shape[0],
-    width=nir_data.shape[1],
-    count=1,
-    dtype=nir_data.dtype,
-    crs="EPSG:4326",
-    transform=transform,
-) as dst:
-    dst.write(nir_data, 1)
-
-print("red.tif and nir.tif created!")
-
-# Raster Analysis
-import rasterio
-import numpy as np
-import matplotlib.pyplot as plt
-
-with rasterio.open("red.tif") as red, rasterio.open("nir.tif") as nir:
-    R = red.read(1).astype('float32')
-    N = nir.read(1).astype('float32')
-
-NDVI = (N - R) / (N + R)
-
-plt.imshow(NDVI, cmap='RdYlGn')
-plt.colorbar()
-plt.title("NDVI Map")
-plt.show()
-
-!pip install geopy
-
-from geopy.geocoders import Nominatim
-
-geolocator = Nominatim(user_agent="geo_app")
-
-location = geolocator.geocode("Eiffel Tower, Paris")
-
-print("Address:", location.address)
-print("Latitude:", location.latitude)
-print("Longitude:", location.longitude)
-
-location = geolocator.reverse("48.8584, 2.2945")
-
-print("Reverse Geocoded Address:")
-print(location.address)
-
-addresses = ["New York, USA", "Nairobi, Kenya", "Tokyo, Japan"]
-
-for addr in addresses:
-    loc = geolocator.geocode(addr)
-    print(addr, "-->", (loc.latitude, loc.longitude))
+df[['region', 'region_freq']].head()
+df.info()
 
 practical 4
 
-!pip install geopandas shapely matplotlib plotly
-import geopandas as gpd
-from shapely.geometry import Polygon
-
-data = {
-    "area": [300,600,800,450],
-    "landuse": ["Residential", "Commercial", "Residential", "Industrial"],
-    "geometry": [
-        Polygon([(0,0),(1,0),(1,1),(0,1)]),
-        Polygon([(2,0),(3,0),(3,1),(2,1)]),
-        Polygon([(4,0),(5,0),(5,1),(4,1)]),
-        Polygon([(6,0),(7,0),(7,1),(6,1)])
-    ]
-}
-
-gdf = gpd.GeoDataFrame(data,crs = "EPSG:4326")
-# Select parcels with area > 500 sq meters
-filtered = gdf[gdf["area"] > 500]
-
-print(filtered.head())
-# --- Filter by category ---
-# Select only residential parcels
-residential = gdf[gdf["landuse"] == "Residential"]
-
-# Save result
-residential.to_file("residential_parcels.shp")
-print("Residential parcels saved")
-
-import geopandas as gpd
-from shapely.geometry import Point, Polygon
-
-city_geom = Polygon([(0,0),(5,0),(5,5),(0,5)])
-city = gpd.GeoDataFrame({
-    "name": ["City"]},
-    geometry = [city_geom],
-    crs = "EPSG:4326"
-)
-
-bus_stops = gpd.GeoDataFrame({
-    "stop": ["A","B","C"]},
-    geometry = [Point(1,1),Point(3,3),Point(6,6)],
-    crs = "EPSG:4326"
-)
-
-bus_in_city = gpd.sjoin(bus_stops, city, predicate="within")
-
-# Save result
-bus_in_city.to_file("bus_stops_in_city.shp")
-print(bus_in_city)
-
+import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-
-x = np.linspace(-5, 5, 100)
-y = np.linspace(-5, 5, 100)
-X, Y = np.meshgrid(x, y)
-
-Z = np.sin(np.sqrt(X**2 + Y**2))
-
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-
-ax.plot_surface(X, Y, Z, cmap='terrain')
-
-ax.set_xlabel("X")
-ax.set_ylabel("Y")
-ax.set_zlabel("Z")
-
-plt.show()
-import plotly.graph_objects as go
-
-z_exaggeration = 3
-
-fig = go.Figure(
-    data=[go.Surface(
-        x=X,
-        y=Y,
-        z=Z * z_exaggeration,
-        colorscale='earth'
-    )]
-)
-
-fig.update_layout(title="DEM with Vertical Exaggeration")
-fig.show()
-
-practical 5
-
-
-!pip install folium
-import folium
-
-m = folium.Map(
-location=[20.5937, 78.9629], # India coordinates
-zoom_start=5
-)
-m
-
-
-folium.Map(
-location=[20.5937, 78.9629],
-zoom_start=5,
-tiles="OpenStreetMap"
-)
-
-
-m = folium.Map(location=[28.6139, 77.2090], zoom_start=6)
-folium.Marker(
-location=[28.6139, 77.2090],
-popup="New Delhi",
-tooltip="Click for info"
-).add_to(m)
-
-m
-
-
-cities = [
-("Mumbai", 19.0760, 72.8777),
-("Chennai", 13.0827, 80.2707),
-("Kolkata", 22.5726, 88.3639)
-]
-m = folium.Map(location=[20.5937, 78.9629], zoom_start=5)
-for city, lat, lon in cities:
-    folium.Marker(
-    [lat, lon],
-    popup=city
-    ).add_to(m)
-m
-
-
-folium.Marker(
-location=[19.0760, 72.8777],
-popup="Mumbai",
-icon=folium.Icon(color="green", icon="info-sign")
-).add_to(m)
-m
-
-
-
-folium.CircleMarker(
-location=[28.6139, 77.2090],
-radius=10,
-popup="Delhi",
-color="red",
-fill=True,
-fill_color="red"
-).add_to(m)
-m
-
-
-
-folium.PolyLine(
-locations=[
-[28.6139, 77.2090],
-[19.0760, 72.8777],
-[13.0827, 80.2707]
-],
-color="blue"
-).add_to(m)
-m
-m.save("india_map.html")
-
-
-
-
-
-
-!pip install shapely matplotlib
-from shapely.geometry import Point, LineString, Polygon
-import matplotlib.pyplot as plt
-
-# Create a point
-
-point = Point(2, 3)
-point
-
-
-# Create buffer of radius 1 unit
-point_buffer = point.buffer(1)
-point_buffer
-
-
-x, y = point.xy
-bx, by = point_buffer.exterior.xy
-plt.figure(figsize=(5,5))
-plt.plot(x, y, 'ro', label='Point')
-plt.plot(bx, by, 'b', label='Buffer')
-plt.fill(bx, by, alpha=0.3)
-plt.legend()
-plt.title("Buffer Analysis on Point")
-plt.show()
-
-
-# Create a line
-line = LineString([(1, 1), (4, 4)])
-
-# Create buffer around line
-
-line_buffer = line.buffer(0.5)
-line_buffer
-
-
-lx, ly = line.xy
-bx, by = line_buffer.exterior.xy
-plt.figure(figsize=(5,5))
-plt.plot(lx, ly, 'r', label='Line')
-plt.plot(bx, by, 'b', label='Buffer')
-plt.fill(bx, by, alpha=0.3)
-plt.legend()
-plt.title("Buffer Analysis on Line")
-plt.show()
-
-
-# Create a polygon
-polygon = Polygon([(1,1), (4,1), (4,4), (1,4)])
-# Create buffer
-polygon_buffer = polygon.buffer(0.5)
-polygon_buffer
-
-
-px, py = polygon.exterior.xy
-bx, by = polygon_buffer.exterior.xy
-plt.figure(figsize=(5,5))
-plt.plot(px, py, 'r', label='Polygon')
-
-plt.plot(bx, by, 'b', label='Buffer')
-plt.fill(bx, by, alpha=0.3)
-plt.legend()
-plt.title("Buffer Analysis on Polygon")
-plt.show()
-
-
-inner_buffer = polygon.buffer(-0.3)
-inner_buffer
-
-practical 6
-
-!pip install geopandas shapely matplotlib seaborn folium
-import geopandas as gpd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from shapely.geometry import Point, Polygon
-import random
-import folium
-from folium.plugins import HeatMap
+from faker import Faker
 
-
-points = []
-for i in range(100):
-    x = random.uniform(0, 10)
-    y = random.uniform(0, 10)
-    points.append(Point(x, y))
-
-points_gdf = gpd.GeoDataFrame(geometry=points, crs="EPSG:4326")
-points_gdf.head()
-
-boundary = Polygon([
-(2, 2),
-(8, 2),
-(8, 8),
-(2, 8)
-])
-boundary_gdf = gpd.GeoDataFrame(geometry=[boundary], crs="EPSG:4326")
-
-clipped_points = gpd.clip(points_gdf, boundary_gdf) 
-clipped_points.head()
-
-
-fig, ax = plt.subplots(figsize=(6, 6)) 
-points_gdf.plot(ax=ax, color="blue", markersize=8, label="Original Points")
-boundary_gdf.plot(ax=ax, facecolor="none", edgecolor="black", linewidth=2)
-clipped_points.plot(ax=ax, color="red", markersize=8, label="Clipped Points")
-plt.legend()
-plt.title("Clipping Geospatial Data")
-plt.show()
-
-
-
-points_gdf["x"] = points_gdf.geometry.x
-points_gdf["y"] = points_gdf.geometry.y
-plt.figure(figsize=(6, 5))
-sns.kdeplot(
-x=points_gdf["x"],
-y=points_gdf["y"],
-cmap="Reds",
-fill=True
-)
-plt.title("Heatmap of Point Density")
-plt.xlabel("X")
-plt.ylabel("Y")
-plt.show()
-
-heat_data = [[point.y, point.x] for point in points_gdf.geometry]
-m = folium.Map(location=[5, 5], zoom_start=5)
-HeatMap(heat_data).add_to(m)
-m
-
-practical 7
-
-!pip install osmnx geopandas networkx matplotlib
-
-
-import osmnx as ox
-import networkx as nx
-import matplotlib.pyplot as plt
-
-ox.settings.use_cache = True
-ox.settings.log_console = True
-
-place_name = "Nairobi, Kenya"
-
-G = ox.graph_from_place(place_name, network_type="drive")
-
-ox.plot_graph(G)
-
-
-
-origin_point = (-1.2921, 36.8219) 
-destination_point = (-1.3192, 36.9275) 
-
-orig_node = ox.nearest_nodes(G, origin_point[1], origin_point[0])
-dest_node = ox.nearest_nodes(G, destination_point[1], destination_point[0])
-orig_node, dest_node
-
-
-
-
-route = nx.shortest_path(G, orig_node, dest_node, weight="length")
-
-fig, ax = ox.plot_graph_route(
-G, route,
-route_color="red",
-route_linewidth=4,
-node_size=0
-)
-
-
-route_gdf = ox.routing.route_to_gdf(G, route)
-
-
-route_length = route_gdf["length"].sum()
-print(f"Route length: {route_length/1000:.2f} km")
-
-
-
-import geopandas as gpd
-from shapely.geometry import Point, Polygon
-
-polygons = gpd.GeoDataFrame({
-"area_name": ["Zone A", "Zone B"],
-"geometry": [
-Polygon([(0,0), (0,5), (5,5), (5,0)]),
-Polygon([(5,0), (5,5), (10,5), (10,0)])
-]
-}, crs="EPSG:4326")
-
-points = gpd.GeoDataFrame({
-"facility": ["School 1", "School 2", "Hospital"],
-"geometry": [
-Point(1, 1),
-Point(6, 2),
-Point(8, 4)
-]
-}, crs="EPSG:4326")
-
-ax = polygons.plot(color="lightgrey", edgecolor="black", figsize=(6,6))
-points.plot(ax=ax, color="red")
-
-
-
-joined = gpd.sjoin(
-points,
-polygons,
-how="left",
-predicate="within"
-)
-joined
-
-facility_count = joined.groupby("area_name").size().reset_index(name="count")
-facility_count
-
-practical 8
-
-!pip install rasterio geopandas rasterstats shapely
-import numpy as np
-import geopandas as gpd
-import rasterio
-from rasterio.transform import from_origin
-from rasterstats import zonal_stats
-from shapely.geometry import box
-import matplotlib.pyplot as plt
-
-# Create a raster (100 x 100 grid)
-raster_data = np.random.uniform(10, 100, (100, 100))
-# Define raster transform
-transform = from_origin(0, 100, 1, 1)
-# Save raster to disk
-raster_path = "synthetic_raster.tif"
-
-with rasterio.open(
-raster_path,
-"w",
-driver="GTiff",
-height=raster_data.shape[0],
-width=raster_data.shape[1],
-count=1,
-dtype=raster_data.dtype,
-crs="EPSG:4326",
-transform=transform,
-) as dst:
-    dst.write(raster_data, 1)
-
-polygons = []
-zone_ids = []
-for i in range(5):
-    for j in range(5):
-        polygons.append(box(i*20, j*20, (i+1)*20, (j+1)*20))
-        zone_ids.append(f"Zone_{i}_{j}")
-        
-zones = gpd.GeoDataFrame(
-    {"zone": zone_ids, "geometry": polygons},
-    crs="EPSG:4326"
-
-)
-zones
-
-stats = zonal_stats(
-zones,
-raster_path,
-stats=["mean", "min", "max", "std"]
-)
-zones_stats = zones.join(gpd.GeoDataFrame(stats))
-zones_stats
-
-zones_stats.plot(
-column="mean",
-cmap="YlOrRd",
-legend=True,
-edgecolor="black"
-)
-
-plt.title("Zonal Mean of Synthetic Raster")
-plt.show()
-
-
-
-
-
+fake = Faker()
 np.random.seed(42)
-num_points = 30
-x = np.random.uniform(0, 100, num_points)
-y = np.random.uniform(0, 100, num_points)
-values = np.random.uniform(20, 80, num_points)
-points = gpd.GeoDataFrame(
-{"value": values},
-geometry=gpd.points_from_xy(x, y),
-crs="EPSG:4326"
-)
-points
 
+records = []
 
-from scipy.spatial import cKDTree
+for _ in range(500):
+    quantity = np.random.randint(1, 10)
+    unit_price = np.random.randint(100, 5000)
+    sales = quantity * unit_price
+    profit = sales * np.random.uniform(0.05, 0.25)
 
-def idw(x, y, values, xi, yi, power=2):
-    tree = cKDTree(list(zip(x, y)))
-    dist, idx = tree.query(list(zip(xi.ravel(), yi.ravel())), k=6)
-    weights = 1 / dist**power
-    weights[np.isinf(weights)] = 0
-    zi = np.sum(weights * values[idx], axis=1) / np.sum(weights, axis=1)
-    return zi.reshape(xi.shape)
+    records.append({
+        "Order_ID": fake.uuid4(),
+        "Order_Date": fake.date_between(start_date='-1y', end_date='today'),
+        "Customer_Name": fake.name(),
+        "Region": np.random.choice(["North", "South", "East", "West"]),
+        "Product": np.random.choice(["Laptop", "Mobile", "Tablet", "Accessories"]),
+        "Quantity": quantity,
+        "Unit_Price": unit_price,
+        "Sales": sales,
+        "Profit": round(profit, 2)
+    })
 
+df = pd.DataFrame(records)
+df.head()
 
-grid_x, grid_y = np.mgrid[0:100:100j, 0:100:100j]
-
-idw_result = idw(x, y, values, grid_x, grid_y)
-
-plt.figure(figsize=(7, 6))
-plt.imshow(
-idw_result.T,
-origin="lower",
-extent=(0, 100, 0, 100),
-cmap="viridis"
-)
-plt.scatter(x, y, c="red", edgecolor="black")
-plt.colorbar(label="Interpolated Value")
-plt.title("IDW Interpolation (Synthetic Data)")
+df.shape
+df.info()
+df.describe()
+df["Sales"].mean()
+df["Profit"].sum()
+df["Quantity"].median()
+df["Region"].value_counts()
+df["Product"].mode()
+plt.hist(df["Sales"], bins=30)
+plt.xlabel("Sales")
+plt.ylabel("Frequency")
+plt.title("Sales Distribution")
+plt.show()
+sns.boxplot(y=df["Profit"])
+plt.title("Profit Distribution")
+plt.show()
+df.groupby("Product")["Sales"].sum().plot(kind="bar")
+plt.xlabel("Product")
+plt.ylabel("Total Sales")
+plt.title("Sales by Product")
+plt.show()
+df["Region"].value_counts().plot(kind="pie", autopct="%1.1f%%")
+plt.ylabel("")
+plt.title("Orders by Region")
 plt.show()
 
-!pip install pykrige
-from pykrige.ok import OrdinaryKriging
-
-OK = OrdinaryKriging(
-x,
-y,
-values,
-variogram_model="spherical",
-verbose=False,
-
-enable_plotting=False
-)
-z_kriged, ss = OK.execute("grid", grid_x[:,0], grid_y[0,:])
-
-
-plt.figure(figsize=(7, 6))
-plt.imshow(
-z_kriged.T,
-origin="lower",
-extent=(0, 100, 0, 100),
-cmap="plasma"
-)
-plt.scatter(x, y, c="black")
-plt.colorbar(label="Interpolated Value")
-plt.title("Ordinary Kriging (Synthetic Data)")
+df_sorted = df.sort_values("Order_Date")
+plt.plot(df_sorted["Order_Date"], df_sorted["Sales"])
+plt.xlabel("Date")
+plt.ylabel("Sales")
+plt.title("Sales Trend Over Time")
+plt.show()
+corr = df.select_dtypes(include=['int64', 'float64']).corr()
+corr
+plt.figure(figsize=(7,5))
+sns.heatmap(corr, annot=True, cmap="coolwarm")
+plt.title("Correlation Heatmap")
 plt.show()
 
-practical 9
-
-
-!pip install geopandas shapely
+Practical 5a
+import numpy as np
 import pandas as pd
-import geopandas as gpd
-from shapely.geometry import Polygon
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
-
-landuse_polygons = [
-Polygon([(0,0), (4,0), (4,4), (0,4)]), # Residential
-Polygon([(4,0), (8,0), (8,4), (4,4)]), # Commercial
-Polygon([(0,4), (8,4), (8,8), (0,8)]) # Industrial
-]
-landuse_types = ["Residential", "Commercial", "Industrial"]
-landuse = gpd.GeoDataFrame(
-{"landuse": landuse_types},
-geometry=landuse_polygons,
-crs="EPSG:4326"
-)
-
-
-floodzone_polygons = [
-Polygon([(2,2), (6,2), (6,6), (2,6)])
-]
-floodzone = gpd.GeoDataFrame(
-{"flood_risk": ["High"]},
-geometry=floodzone_polygons,
-crs="EPSG:4326"
-)
-
-
-ax = landuse.plot(color="lightgreen", edgecolor="black", figsize=(6,6))
-floodzone.plot(ax=ax, color="blue", alpha=0.5)
-
-
-
-flooded_landuse = gpd.overlay(landuse, floodzone, how="intersection")
-flooded_landuse
-
-
-ax = landuse.plot(color="lightgrey", edgecolor="black", figsize=(6,6))
-floodzone.plot(ax=ax, color="blue", alpha=0.4)
-flooded_landuse.plot(ax=ax, color="red")
-
-flooded_landuse_m = flooded_landuse.to_crs(epsg=3857)
-flooded_landuse_m["area_sqm"] = flooded_landuse_m.geometry.area
-flooded_landuse_m[["landuse", "area_sqm"]]
-
-floodzones = {
-"zone1": Polygon([(1,1), (3,1), (3,3), (1,3)]),
-"zone2": Polygon([(5,1), (7,1), (7,3), (5,3)]),
-"zone3": Polygon([(2,5), (6,5), (6,7), (2,7)])
+data = {
+    "TV": [50, 70, 90, 110, 130, 150, 170, 190],
+    "Sales": [6.2, 7.1, 8.0, 8.9, 9.7, 10.4, 11.1, 11.9]
 }
 
-results = []
-for name, polygon in floodzones.items():
-    fz = gpd.GeoDataFrame(
-    {"zone": [name]},
-    geometry=[polygon],
-    crs="EPSG:4326"
-    )
-    overlay_result = gpd.overlay(landuse, fz, how="intersection")
-    overlay_result["zone"] = name
-    results.append(overlay_result)
+df = pd.DataFrame(data)
+df
+X = df[["TV"]]   
+y = df["Sales"]  
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.25, random_state=42)
+lm= LinearRegression()
+lm.fit(X_train, y_train)
+#Prediction using model
+y_pred = lm.predict(X_test)
+print(y_pred)
+print("Mean Absolute Error (MAE):", mean_absolute_error(y_test, y_pred))
+print("Mean Squared Error (MSE):", mean_squared_error(y_test, y_pred))
+print("Root Mean Squared Error (RMSE):", np.sqrt(mean_squared_error(y_test, y_pred)))
+print("R² Score:", r2_score(y_test, y_pred))
 
+comparison = pd.DataFrame({
+    "Actual": y_test[:10],
+    "Predicted": y_pred[:10]
+})
 
+print(comparison)
 
-batch_overlay = gpd.GeoDataFrame(
-pd.concat(results, ignore_index=True),
-crs="EPSG:4326"
+Practical 5b
+import pandas as pd
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+
+df = load_breast_cancer()
+
+X = pd.DataFrame(df.data, columns=df.feature_names)
+y = df.target 
+
+print(X)
+print(y)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42)
+log_model = LogisticRegression(max_iter=5000)
+log_model.fit(X_train, y_train)
+y_pred = log_model.predict(X_test)
+y_pred
+
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
+print("Classification Report:\n", classification_report(y_test, y_pred))
+
+Practical 6
+import numpy as np
+import pandas as pd
+
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import train_test_split
+
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+
+from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score
+data = load_breast_cancer()
+X = data.data
+y = data.target
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
 )
+dt_model = DecisionTreeClassifier(random_state=42)
+dt_model.fit(X_train, y_train)
+dt_pred = dt_model.predict(X_test)
 
+rf_model = RandomForestClassifier(
+    n_estimators=100,
+    random_state=42
+)
+rf_model.fit(X_train, y_train)
+rf_pred = rf_model.predict(X_test)
 
+def evaluate_model(y_true, y_pred):
+    return {
+        "Accuracy": accuracy_score(y_true, y_pred),
+        "Precision": precision_score(y_true, y_pred),
+        "Recall": recall_score(y_true, y_pred),
+        "Confusion Matrix": confusion_matrix(y_true, y_pred)
+    }
 
-batch_overlay_m = batch_overlay.to_crs(epsg=3857)
-batch_overlay_m["area_sqm"] = batch_overlay_m.geometry.area
-batch_overlay_m.groupby(["zone", "landuse"])["area_sqm"].sum()
+dt_results = evaluate_model(y_test, dt_pred)
+rf_results = evaluate_model(y_test, rf_pred)
+
+comparison = pd.DataFrame({
+    "Metric": ["Accuracy", "Precision", "Recall"],
+    "Decision Tree": [
+        dt_results["Accuracy"],
+        dt_results["Precision"],
+        dt_results["Recall"]
+    ],
+    "Random Forest": [
+        rf_results["Accuracy"],
+        rf_results["Precision"],
+        rf_results["Recall"]
+    ]
+})
+
+print(comparison)
+print("Decision Tree Confusion Matrix:\n", dt_results["Confusion Matrix"])
+print("\nRandom Forest Confusion Matrix:\n", rf_results["Confusion Matrix"])
+
+Practical 7
+
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import make_blobs
+from sklearn.cluster import KMeans, AgglomerativeClustering,DBSCAN
+
+X, _ = make_blobs(n_samples=300, centers=3, cluster_std=1.0, random_state=42)
+
+kmeans = KMeans(n_clusters=3, n_init=10, random_state=42)
+labels_kmeans = kmeans.fit_predict(X)
+print(labels_kmeans)
+
+hier = AgglomerativeClustering(n_clusters=3)
+labels_hier = hier.fit_predict(X)
+
+dbscan = DBSCAN(eps=0.8, min_samples=5)
+labels_dbscan = dbscan.fit_predict(X)
+
+plt.figure()
+plt.scatter(X[:, 0], X[:, 1], c=labels_kmeans)
+plt.title("K-Means Clustering")
+plt.show()
+
+plt.figure()
+plt.scatter(X[:, 0], X[:, 1], c=labels_hier)
+plt.title("Hierarchical Clustering")
+plt.show()
+
+plt.figure()
+plt.scatter(X[:, 0], X[:, 1], c=labels_dbscan)
+plt.title("DBSCAN Clustering")
+plt.show()
+
+Practical 8
+
+import matplotlib.pyplot as plt
+import pandas as pd
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+
+time = list(range(1, 25))
+sales = [
+    120, 150, 130, 170, 140, 180, 160, 200, 170, 210, 190, 230,
+    180, 220, 200, 240, 210, 260, 230, 280, 240, 300, 260, 320
+]
+series = pd.Series(sales)
+
+model = SARIMAX(series, order=(1,1,1), seasonal_order=(1,1,1,12)).fit(disp=False)
+
+k = 6
+forecast = model.forecast(steps=k)
+t_next = list(range(time[-1] + 1, time[-1] + k + 1))
+
+t_next = list(range(time[-1] + 1, time[-1] + k + 1))
+plt.figure()
+plt.plot(time, sales, marker='o')
+plt.plot(t_next, list(forecast), marker='o')
+plt.xlabel("Month")
+plt.ylabel("Sales")
+plt.title("Sales Forecast with Peaks & Valleys (SARIMA)")
+plt.show()
+
+print("Forecasted next 6 months:", forecast.tolist())
