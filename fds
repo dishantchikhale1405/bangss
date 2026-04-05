@@ -1,6 +1,6 @@
 Dataset used: titanic.csv
 
-practical 1
+practical 1 ( data loading and primary inspection)
 import pandas as pd
 df = pd.read_csv("titanic.csv")
 df.shape
@@ -23,7 +23,7 @@ df["embarked"].str.lower().unique() #Lowercase check for case inconsistencies
 df["embarked"].value_counts(normalize=True) #Finding rare values of categorical variables
 
 
-practical 2
+practical 2 ( data progression)
 
 !pip install pandas numpy faker scipy
 import pandas as pd
@@ -52,18 +52,22 @@ for i in range(200):  # 200 rows
     })
 df = pd.DataFrame(sales_data)
 df.head()
+#intriduce missing values
 df.loc[5, "Customer_Name"] = None
 df.loc[20, "Price"] = np.nan
 df.loc[50, "Region"] = None
 df.loc[70, "Quantity"] = np.nan
+# introducing outliers
 df.loc[10, "Total_Amount"] = 50000   # extreme high sale
 df.loc[15, "Quantity"] = 40          # unrealistic quantity
 df.loc[33, "Price"] = 5000 
+# add duplicates
 df = pd.concat([df, df.iloc[[0]]], ignore_index=True)
-df = pd.concat([df, df.iloc[[10]]], ignore_index=True)
+df = pd.concat([df, df.iloc[[len(df)-1]]], ignore_index=True)
 df.isnull().sum()
 df.isnull().sum().sum()
 df[df.isnull().any(axis=1)]
+
 df_dropna = df.dropna()
 df["Price"] = df["Price"].fillna(df["Price"].median())
 df["Quantity"] = df["Quantity"].fillna(df["Quantity"].median())
